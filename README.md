@@ -1,6 +1,6 @@
 # Robotic Arm Workspace
 
-This workspace contains packages for a robotic arm system using ROS 2, including:
+This workspace contains packages for a robotic arm simularion using ROS 2, including:
 
 - **robotic_arm_bringup**: Launch files and startup configurations
 - **robotic_arm_camera**: Camera integration and vision processing
