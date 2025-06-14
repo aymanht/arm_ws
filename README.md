@@ -46,8 +46,9 @@ ros2 launch robotic_arm_transforms transforms.launch.xml
 5.Solving the IK problems and computing the forward kinematics
 ```bash
 ros2 launch robotic_arm_kinematics robotic_arm_kinematics.launch.py
-### All the packages can be launch using this single command
 ```
+### All the packages can be launch using this single command
+```bash
 source install/setup.bash
 ros2 launch robotic_arm_bringup sim_robotic_arm.launchlaunch.py
 ```
