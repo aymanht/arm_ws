@@ -29,7 +29,7 @@ colcon build
 ### Usage
 ```bash
 source install/setup.bash
-ros2 launch robotic_arm_bringup arm_system.launch.py
+ros2 launch robotic_arm_bringup sim_robotic_arm.launchlaunch.py
 ```
 
 ## License
