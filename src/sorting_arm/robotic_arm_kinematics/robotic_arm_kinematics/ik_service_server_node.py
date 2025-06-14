@@ -105,9 +105,13 @@ class IKServerNode(Node):
         angles=self.robotic_arm.inverse_kinematics([x,y,z])
         angles = np.delete(angles, [0, 1, 6])
         if gripper:
-            angles = np.append(angles, [np.pi/3])
+            # Open gripper - wider opening
+            angles = np.append(angles, [np.pi/3])  # 60 degrees - OPEN
+            self.get_logger().info("Gripper set to OPEN position")
         else:
-            angles = np.append(angles, [0])
+            # Close gripper - much tighter grip
+            angles = np.append(angles, [-np.pi/6])  # -30 degrees - CLOSED (negative for tighter grip)
+            self.get_logger().info("Gripper set to CLOSED position")
 
         self.goal_positions = list(angles) 
         print("\nInverse Kinematics Solution :\n" ,self.goal_positions)

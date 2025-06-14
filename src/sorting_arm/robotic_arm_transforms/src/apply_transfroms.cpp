@@ -31,72 +31,27 @@ DynamicFrameBroadcaster()
 private:
 void transform_callback(const robotic_arm_msgs::msg::Yolov8Inference & msg) const
 {
-    //rclcpp::Time now = this->get_clock()->now();
     std::vector<std::string> message;
     std::vector<std::string> names;
-    std::vector<geometry_msgs::msg::TransformStamped> t;
     message = msg.detected_obj_positions;
     names = msg.class_names;
 
-    //send logger information only
-    RCLCPP_INFO(this->get_logger(), "Received yolov8_inference message");
-    //stream the message to the screen using the logger
-    int j = 0; 
-    int i = 0;
-    int num = 0;
-    int num_ = 0;
-    for(j = 0; j < names.size(); j++)
-    {
-      std::ostringstream oss;
-      oss << names[j] << j;
-      RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
-
-      
-      //create rclcpp time to record time now
-      rclcpp::Time now = this->now();
-      //double x = now.seconds() * PI;
-
-       geometry_msgs::msg::TransformStamped newint;
-       t.push_back(newint);
-       t[j].header.stamp = now;
-       t[j].header.frame_id = "aruco_link";
-       t[j].child_frame_id = oss.str();
+    RCLCPP_INFO(this->get_logger(), "Received yolov8_inference message with %zu objects", names.size());
     
-    for(i = 0; i < (3); i++)
-    {
-        std::string message_position = message[num];
-        //format to stream usign RCLCPP logger
-        //RCLCPP_INFO(this->get_logger(), message_position.c_str());
-        if(num_ == 0)
-        { 
-          double number = std::stod(message_position)/1000;
-          //log number data to screen
-          RCLCPP_INFO(this->get_logger(), "%f", number);
-          t[j].transform.translation.y = number;
+    // In simulation mode, we skip transform broadcasting since we're using direct coordinates
+    // This prevents conflicts with the direct coordinate approach
+    if (names.size() > 0) {
+        RCLCPP_INFO(this->get_logger(), "Simulation mode: Skipping transform broadcasting, using direct coordinates");
+        for (int i = 0; i < names.size(); i++) {
+            if (i * 3 + 2 < message.size()) {
+                RCLCPP_INFO(this->get_logger(), "Object %s coordinates: X=%s, Y=%s, Z=%s", 
+                           names[i].c_str(), 
+                           message[i*3].c_str(), 
+                           message[i*3+1].c_str(), 
+                           message[i*3+2].c_str());
+            }
         }
-        else if(num_ == 1)
-        {
-          double number = std::stod(message_position)/1000;
-          //log number data to screen
-          RCLCPP_INFO(this->get_logger(), "%f", number);
-          t[j].transform.translation.x = number;
-        }
-        else if(num_ == 2)
-        {
-          double number = std::stod(message_position)/1000;
-          //log number data to screen
-          RCLCPP_INFO(this->get_logger(), "%f", number);
-          t[j].transform.translation.z = number;
-        }
-
-        num++;
-        num_++;
     }
-        num_ = 0;
-      tf_broadcaster_->sendTransform(t[j]);
-    }
-
-
 }
 
   rclcpp::TimerBase::SharedPtr timer_;

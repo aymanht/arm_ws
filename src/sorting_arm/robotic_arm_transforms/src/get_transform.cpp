@@ -41,51 +41,44 @@ public:
 private:
   void on_timer(const robotic_arm_msgs::msg::Yolov8Inference & msg)
   {
-    // Store frame names in variables that will be used to
-    // compute transformations
-    std::string fromFrameRel = "world";
-    //std::string toFrameRe[] ;
-     
-     std::vector<std::string> tf_data_class_names;
-     std::vector<std::string> tf_data_detected_object_positions;
+    std::vector<std::string> tf_data_class_names;
+    std::vector<std::string> tf_data_detected_object_positions;
     robotic_arm_msgs::msg::WorldObjectInference tf_data;
     
     std::vector<std::string> names;
-    std::vector<geometry_msgs::msg::TransformStamped> t;
+    std::vector<std::string> positions;
     names = msg.class_names;
+    positions = msg.detected_obj_positions;
 
+    RCLCPP_INFO(this->get_logger(), "Processing %zu detected objects", names.size());
     
-    for(int i = 0; i < names.size(); i++)
-    {
-        geometry_msgs::msg::TransformStamped t;
-
-      tf_data_class_names.push_back(names[i]);
-       
-      
-      std::ostringstream oss;
-      oss << names[i] << i;
-      RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
-
-        try {
-          t = tf_buffer_->lookupTransform(oss.str(), fromFrameRel, tf2::TimePointZero);
-
-            tf_data_detected_object_positions.push_back(std::to_string(t.transform.translation.x));
-            tf_data_detected_object_positions.push_back(std::to_string(t.transform.translation.y));
-            tf_data_detected_object_positions.push_back(std::to_string(t.transform.translation.z));
-
-        } 
-        catch (const tf2::TransformException & ex) 
-        {
-            RCLCPP_INFO(this->get_logger(), "Could not transform %s to %s: %s",oss.str().c_str(), fromFrameRel.c_str(), ex.what());
-          return;
+    // In simulation mode, bypass transform lookup and use coordinates directly
+    if (names.size() > 0 && positions.size() >= names.size() * 3) {
+        // Copy class names directly
+        tf_data_class_names = names;
+        
+        // Copy positions directly (they're already in the correct format from the publisher)
+        tf_data_detected_object_positions = positions;
+        
+        RCLCPP_INFO(this->get_logger(), "Using direct coordinates (simulation mode)");
+        for (int i = 0; i < names.size(); i++) {
+            if (i * 3 + 2 < positions.size()) {
+                RCLCPP_INFO(this->get_logger(), "Object %s: X=%s, Y=%s, Z=%s", 
+                           names[i].c_str(), 
+                           positions[i*3].c_str(), 
+                           positions[i*3+1].c_str(), 
+                           positions[i*3+2].c_str());
+            }
         }
-
-    }
-       tf_data.class_names = tf_data_class_names;
-       tf_data.detected_obj_positions = tf_data_detected_object_positions;
-    
+        
+        tf_data.class_names = tf_data_class_names;
+        tf_data.detected_obj_positions = tf_data_detected_object_positions;
+        
+        RCLCPP_INFO(this->get_logger(), "Publishing world object inference with %zu objects", tf_data_class_names.size());
         publisher_tf->publish(tf_data);
-    
+    } else {
+        RCLCPP_WARN(this->get_logger(), "No valid objects detected or insufficient position data");
+    }
   }
 
   // Boolean values to store the information

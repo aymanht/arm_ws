@@ -9,7 +9,7 @@ import time
 from functools import partial
 
 DELAY = 5
-TRAJECTORY_HEIGHT = 250
+TRAJECTORY_HEIGHT = 10
 
 
 class IKClientNode(Node):
@@ -158,33 +158,52 @@ class IKClientNode(Node):
             
     # Define the pick and place logic
     def pick_and_place_object(self):
-        # Open gripper
-        self.service_client_setup(self.home_pos[0], self.home_pos[1], self.home_pos[2], True)
+        # Step 1: Open gripper and move to home position
+        self.get_logger().info("Step 1: Moving to home with gripper open")
+        self.service_client_setup(self.home_pos[0], self.home_pos[1], self.home_pos[2], True)  # True = OPEN
         time.sleep(DELAY)
-        # Move to the object's position
-        self.service_client_setup(self.object_position[0], self.object_position[1], TRAJECTORY_HEIGHT, True)
+        
+        # Step 2: Move to trajectory height above object with gripper open
+        self.get_logger().info("Step 2: Moving above object")
+        self.service_client_setup(self.object_position[0], self.object_position[1], TRAJECTORY_HEIGHT, True)  # True = OPEN
         time.sleep(DELAY)
-        # Close the gripper
-        self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2], True)
+        
+        # Step 3: Move down to object position with gripper open
+        self.get_logger().info("Step 3: Moving down to object position")
+        self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2], True)  # True = OPEN
         time.sleep(DELAY)
-        # Close the gripper
-        self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2], False)
+        
+        # Step 4: Close gripper to pick up object - SLOWER for better grip
+        self.get_logger().info("Step 4: CLOSING gripper to grip object")
+        self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2], False)  # False = CLOSE
+        time.sleep(DELAY + 2)  # Extra time for gripper to close properly
+        
+        # Step 5: Move up slightly to test grip before lifting
+        self.get_logger().info("Step 5: Testing grip - slight upward movement")
+        self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2] + 20, False)  # False = KEEP CLOSED
         time.sleep(DELAY)
-        # Move to trajectory height to avoid collisiom
-        self.service_client_setup(self.object_position[0], self.object_position[1], TRAJECTORY_HEIGHT, False)
+        
+        # Step 6: Move to trajectory height with gripper closed (holding object)
+        self.get_logger().info("Step 6: Lifting object to trajectory height")
+        self.service_client_setup(self.object_position[0], self.object_position[1], TRAJECTORY_HEIGHT, False)  # False = KEEP CLOSED
         time.sleep(DELAY)
-        # Move to the placing position
-        self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2], False)
+        
+        # Step 7: Move to placing position with gripper closed
+        self.get_logger().info("Step 7: Moving to placement position")
+        self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2], False)  # False = KEEP CLOSED
         time.sleep(DELAY)
-        # Dropping the object
-        self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2], True)
+        
+        # Step 8: Open gripper to drop object
+        self.get_logger().info("Step 8: OPENING gripper to release object")
+        self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2], True)  # True = OPEN
         time.sleep(DELAY)
-        # Open the gripper
-        self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2], False)
+        
+        # Step 9: Return to home position with gripper open
+        self.get_logger().info("Step 9: Returning to home position")
+        self.service_client_setup(self.home_pos[0], self.home_pos[1], self.home_pos[2], True)  # True = OPEN
         time.sleep(DELAY)
-        # Return to home position
-        self.service_client_setup(self.home_pos[0], self.home_pos[1], self.home_pos[2], False)
-        time.sleep(DELAY)
+        
+        self.get_logger().info("Pick and place sequence completed!")
 
 
     # Function to compare two lists
