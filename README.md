@@ -27,8 +27,14 @@ colcon build
 ```
 
 ### Usage
-
-##ayman
+1.launch the simuilation:
+'''bash
+ros2 launch robotic_arm_description robot_arm_gazebo.launch.py
+'''
+2.launch the controllers:
+'''bash
+ros2 launch robotic_arm_controllers robot_arm_controllers.launch.py
+'''
 ```bash
 source install/setup.bash
 ros2 launch robotic_arm_bringup sim_robotic_arm.launchlaunch.py
