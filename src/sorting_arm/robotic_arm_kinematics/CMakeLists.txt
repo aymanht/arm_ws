@@ -38,6 +38,8 @@ install(
   PROGRAMS
     ${PROJECT_NAME}/ik_service_server_node.py
     ${PROJECT_NAME}/ik_service_client_node.py
+    ${PROJECT_NAME}/gripper_attach_node.py
+    ${PROJECT_NAME}/spawn_objects.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

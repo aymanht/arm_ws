@@ -1,12 +1,9 @@
 controller_manager:
   ros__parameters:
-    update_rate: 1000
+    update_rate: 50  # Reduced from 1000Hz to 50Hz for stability
 
     robotic_arm_joint_trajectory_controller:
       type: joint_trajectory_controller/JointTrajectoryController
-
-    # gripper_controller:
-    #   type: forward_command_controller/ForwardCommandController
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -19,7 +16,7 @@ robotic_arm_joint_trajectory_controller:
       - waist_link1_joint
       - link1_link2_joint
       - link2_gripper_base_joint
-      - right_gripper_joint
+      - right_gripper_joint  # Re-add gripper joint to match Gazebo configuration
     
     interface_name: position
     command_interfaces:
@@ -29,17 +26,52 @@ robotic_arm_joint_trajectory_controller:
 
     open_loop_control: true
     allow_integration_in_goal_trajectories: true
+    
+    # Add PID gains for stability (including gripper with lower gains)
+    gains:
+      base_waist_joint:
+        p: 100.0
+        i: 0.01
+        d: 10.0
+        i_clamp: 1.0
+      waist_link1_joint:
+        p: 100.0
+        i: 0.01
+        d: 10.0
+        i_clamp: 1.0
+      link1_link2_joint:
+        p: 100.0
+        i: 0.01
+        d: 10.0
+        i_clamp: 1.0
+      link2_gripper_base_joint:
+        p: 100.0
+        i: 0.01
+        d: 10.0
+        i_clamp: 1.0
+      right_gripper_joint:
+        p: 10.0  # Lower gains for gripper to prevent shaking
+        i: 0.001
+        d: 1.0
+        i_clamp: 0.1
+    
+    # Trajectory tolerances for smoother motion
+    state_tolerance:
+      base_waist_joint: 0.1
+      waist_link1_joint: 0.1
+      link1_link2_joint: 0.1
+      link2_gripper_base_joint: 0.1
+      right_gripper_joint: 0.2  # Higher tolerance for gripper
+    
+    goal_tolerance:
+      base_waist_joint: 0.05
+      waist_link1_joint: 0.05
+      link1_link2_joint: 0.05
+      link2_gripper_base_joint: 0.05
+      right_gripper_joint: 0.1  # Higher tolerance for gripper
+    
+    # Increase trajectory execution time for smoother motion
+    stop_trajectory_duration: 0.5
 
- #   stop_trajectory_duration: 10.0
-
-# # Gripper controller
-# gripper_controller:
-#   ros__parameters:
-#     joints:
-#       - right_gripper_joint
-      
-#     interface_name: position
 
 
-
-  

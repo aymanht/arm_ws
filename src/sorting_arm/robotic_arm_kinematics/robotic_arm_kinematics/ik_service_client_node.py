@@ -3,13 +3,15 @@
 import rclpy
 from rclpy.node import Node
 from numpy import pi
-from robotic_arm_msgs.srv import IKSolver
+from robotic_arm_msgs.srv import IKSolver, GripperControl
 from robotic_arm_msgs.msg import WorldObjectInference
 import time
 from functools import partial
 
 DELAY = 5
-TRAJECTORY_HEIGHT = 10
+TRAJECTORY_HEIGHT = 1000
+# Side approach offset - distance to move away from object before approaching
+SIDE_APPROACH_OFFSET = 50
 
 
 class IKClientNode(Node):
@@ -49,6 +51,8 @@ class IKClientNode(Node):
             self.object_inference_callback,
             10)
 
+        # Gripper control service client
+        self.gripper_client = self.create_client(GripperControl, 'gripper_control')
         
         # self.timer = self.create_timer(5.0, self.timer_callback)
         
@@ -156,54 +160,76 @@ class IKClientNode(Node):
 
         return object_to_pick
             
-    # Define the pick and place logic
+    # Define the pick and place logic with side approach and gripper attach/detach
     def pick_and_place_object(self):
         # Step 1: Open gripper and move to home position
         self.get_logger().info("Step 1: Moving to home with gripper open")
         self.service_client_setup(self.home_pos[0], self.home_pos[1], self.home_pos[2], True)  # True = OPEN
         time.sleep(DELAY)
         
-        # Step 2: Move to trajectory height above object with gripper open
-        self.get_logger().info("Step 2: Moving above object")
-        self.service_client_setup(self.object_position[0], self.object_position[1], TRAJECTORY_HEIGHT, True)  # True = OPEN
+        # Step 2: Move to side approach position - offset from object position
+        side_approach_x = self.object_position[0] - SIDE_APPROACH_OFFSET
+        side_approach_y = self.object_position[1]
+        side_approach_z = self.object_position[2]
+        self.get_logger().info("Step 2: Moving to side approach position")
+        self.service_client_setup(side_approach_x, side_approach_y, side_approach_z, True)  # True = OPEN
         time.sleep(DELAY)
         
-        # Step 3: Move down to object position with gripper open
-        self.get_logger().info("Step 3: Moving down to object position")
+        # Step 3: Approach object from the side horizontally
+        self.get_logger().info("Step 3: Approaching object from the side")
         self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2], True)  # True = OPEN
         time.sleep(DELAY)
         
         # Step 4: Close gripper to pick up object - SLOWER for better grip
         self.get_logger().info("Step 4: CLOSING gripper to grip object")
         self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2], False)  # False = CLOSE
-        time.sleep(DELAY + 2)  # Extra time for gripper to close properly
+        time.sleep(DELAY + 1)  # Wait for gripper to close
         
-        # Step 5: Move up slightly to test grip before lifting
-        self.get_logger().info("Step 5: Testing grip - slight upward movement")
-        self.service_client_setup(self.object_position[0], self.object_position[1], self.object_position[2] + 20, False)  # False = KEEP CLOSED
+        # Step 4.5: ATTACH object to gripper using the attach service
+        self.get_logger().info("Step 4.5: Attaching object to gripper")
+        attach_success = self.control_gripper(attach=True)
+        if not attach_success:
+            self.get_logger().warn("Failed to attach object - continuing anyway")
+        time.sleep(1)  # Brief pause after attachment
+        
+        # Step 5: Back away slightly to side approach position with object
+        self.get_logger().info("Step 5: Backing away from object position")
+        self.service_client_setup(side_approach_x, side_approach_y, side_approach_z, False)  # False = KEEP CLOSED
         time.sleep(DELAY)
         
-        # Step 6: Move to trajectory height with gripper closed (holding object)
+        # Step 6: Lift object to trajectory height
         self.get_logger().info("Step 6: Lifting object to trajectory height")
-        self.service_client_setup(self.object_position[0], self.object_position[1], TRAJECTORY_HEIGHT, False)  # False = KEEP CLOSED
+        self.service_client_setup(side_approach_x, side_approach_y, side_approach_z + TRAJECTORY_HEIGHT, False)  # False = KEEP CLOSED
         time.sleep(DELAY)
         
-        # Step 7: Move to placing position with gripper closed
-        self.get_logger().info("Step 7: Moving to placement position")
+        # Step 7: Move to placement position at trajectory height
+        self.get_logger().info("Step 7: Moving to placement area")
+        self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2] + TRAJECTORY_HEIGHT, False)  # False = KEEP CLOSED
+        time.sleep(DELAY)
+        
+        # Step 8: Lower to placement position
+        self.get_logger().info("Step 8: Lowering to placement position")
         self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2], False)  # False = KEEP CLOSED
         time.sleep(DELAY)
         
-        # Step 8: Open gripper to drop object
-        self.get_logger().info("Step 8: OPENING gripper to release object")
+        # Step 8.5: DETACH object from gripper using the detach service
+        self.get_logger().info("Step 8.5: Detaching object from gripper")
+        detach_success = self.control_gripper(attach=False)
+        if not detach_success:
+            self.get_logger().warn("Failed to detach object - continuing anyway")
+        time.sleep(1)  # Brief pause after detachment
+        
+        # Step 9: Open gripper to release object
+        self.get_logger().info("Step 9: OPENING gripper to release object")
         self.service_client_setup(self.end_position[0], self.end_position[1], self.end_position[2], True)  # True = OPEN
         time.sleep(DELAY)
         
-        # Step 9: Return to home position with gripper open
-        self.get_logger().info("Step 9: Returning to home position")
+        # Step 10: Return to home position with gripper open
+        self.get_logger().info("Step 10: Returning to home position")
         self.service_client_setup(self.home_pos[0], self.home_pos[1], self.home_pos[2], True)  # True = OPEN
         time.sleep(DELAY)
         
-        self.get_logger().info("Pick and place sequence completed!")
+        self.get_logger().info("Side approach pick and place sequence with gripper attach/detach completed!")
 
 
     # Function to compare two lists
@@ -236,6 +262,36 @@ class IKClientNode(Node):
 
         return list_of_lists
     
+    # Function to control gripper attach/detach
+    def control_gripper(self, attach: bool, object_name: str = ""):
+        """Call the gripper control service to attach or detach objects"""
+        try:
+            if not self.gripper_client.wait_for_service(timeout_sec=2.0):
+                self.get_logger().warn('Gripper control service not available')
+                return False
+            
+            request = GripperControl.Request()
+            request.attach = attach
+            request.object_name = object_name
+            
+            future = self.gripper_client.call_async(request)
+            rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
+            
+            if future.result():
+                response = future.result()
+                if response.success:
+                    self.get_logger().info(f"Gripper control: {response.message}")
+                    return True
+                else:
+                    self.get_logger().warn(f"Gripper control failed: {response.message}")
+                    return False
+            else:
+                self.get_logger().error("Gripper control service call failed")
+                return False
+                
+        except Exception as e:
+            self.get_logger().error(f"Error calling gripper control: {str(e)}")
+            return False
     
 
 

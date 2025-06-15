@@ -1,0 +1,7 @@
+# Request
+bool attach  # true to attach object, false to detach
+string object_name  # name of the object to attach/detach (optional, auto-detect if empty)
+---
+# Response
+bool success  # true if operation was successful
+string message  # status message

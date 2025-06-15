@@ -37,7 +37,7 @@ class IKServerNode(Node):
 
         # Goal Positions
         self.goal_positions = HOME_POSITION
-        # Joints to be controlled
+        # Joints to be controlled (re-added gripper joint to match controller config)
         self.joints = [ "base_waist_joint",
                         "waist_link1_joint",
                         "link1_link2_joint",
@@ -80,7 +80,7 @@ class IKServerNode(Node):
         trajectory_msg.joint_names = self.joints
         point = JointTrajectoryPoint()
         point.positions = self.goal_positions
-        point.time_from_start = Duration(sec=2)
+        point.time_from_start = Duration(sec=5)  # Increased from 2 to 5 seconds for smoother motion
         trajectory_msg.points.append(point)
         self.trajectory_publisher.publish(trajectory_msg)
         self.get_logger().info(f"Timer Goal Positions = {self.goal_positions}")
@@ -104,16 +104,17 @@ class IKServerNode(Node):
         self.robot_initialize(urdf_file)
         angles=self.robotic_arm.inverse_kinematics([x,y,z])
         angles = np.delete(angles, [0, 1, 6])
+        # Add gripper control back to match controller config
         if gripper:
             # Open gripper - wider opening
             angles = np.append(angles, [np.pi/3])  # 60 degrees - OPEN
             self.get_logger().info("Gripper set to OPEN position")
         else:
-            # Close gripper - much tighter grip
-            angles = np.append(angles, [-np.pi/6])  # -30 degrees - CLOSED (negative for tighter grip)
+            # Close gripper - much tighter grip but with reduced angle to prevent shaking
+            angles = np.append(angles, [np.pi/6])  # 30 degrees - CLOSED (reduced from -pi/6)
             self.get_logger().info("Gripper set to CLOSED position")
 
-        self.goal_positions = list(angles) 
+        self.goal_positions = list(angles)  # Now 5 joints again
         print("\nInverse Kinematics Solution :\n" ,self.goal_positions)
         return self.goal_positions
     
