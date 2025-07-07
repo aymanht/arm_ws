@@ -1,4 +1,4 @@
-# Robotic Arm Workspace
+#Robotic_Arm_Workspace
 
 This workspace contains packages for a robotic arm simularion using ROS 2, including:
 
