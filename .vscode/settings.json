@@ -1,0 +1,12 @@
+{
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": true,
+        "markdown": true,
+        "yaml": true,
+        "xml": true,
+        "python": true,
+        "cpp": true
+    },
+    "github.copilot.chat.localeOverride": "auto"
+}
